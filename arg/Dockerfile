@@ -1,0 +1,3 @@
+FROM ubuntu
+ARG IMG_VER
+RUN echo $IMG_VER
