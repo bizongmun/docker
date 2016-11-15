@@ -1,0 +1,101 @@
+worker:
+  build: images/phpfpm
+  links:
+    - mysql:mysql
+    - mongodb:mongodb
+    - memcached:memcached
+    - redis:redis
+    - elasticsearch:elasticsearch
+    - beanstalkd:beanstalkd
+  volumes_from:
+    - apidata
+  ports:
+    - "9000:9000"
+
+webserver:
+  build: images/webserver
+  ports:
+    - "80:80"
+  links:
+    - worker:worker
+  volumes_from:
+    - apidata
+    - admindata
+    - frontenddata
+
+composer:
+  build: images/composer
+  volumes_from:
+    - apidata
+
+artisan:
+  build: images/artisan
+  links:
+    - worker:worker
+    - mysql:mysql
+    - redis:redis
+    - memcached:memcached
+    - beanstalkd:beanstalkd
+  volumes_from:
+    - apidata
+  
+apidata:
+  image: busybox
+  volumes:
+    - "sites/api/api.conf:/etc/nginx/sites-enabled/api.conf"
+    - "www/api/:/var/www/api/"
+
+admindata:
+  image: busybox
+  volumes:
+    - "sites/admin/admin.conf:/etc/nginx/sites-enabled/admin.conf"
+    - "www/admin/:/var/www/admin/"
+
+frontenddata:
+  image: busybox
+  volumes:
+    - "sites/frontend/frontend.conf:/etc/nginx/sites-enabled/frontend.conf"
+    - "www/frontend/:/var/www/frontend/"
+
+mysql:
+  image: tutum/mysql
+  ports:
+    - "3306:3306"
+  environment:
+    MYSQL_PASS: "password"
+    ON_CREATE_DB: "apidb"
+
+mongodb:
+  image: tutum/mongodb
+  ports:
+    - "27017:27017"
+    - "28017:28017"
+  environment:
+    MONGODB_PASS: password
+
+beanstalkd:
+  image: chriskite/beanstalkd
+  ports: 
+    - "11300:11300"
+
+memcached:
+  image: tutum/memcached
+  ports:
+    - "11211:11211"
+  environment:
+    MEMCACHED_PASS: password
+
+redis:
+  image: tutum/redis
+  ports:
+    - "6379:6379"
+  environment:
+    REDIS_PASS: password
+
+elasticsearch:
+  image: tutum/elasticsearch
+  ports:
+    - "9200:9200"
+  environment:
+    ELASTICSEARCH_USER: admin
+    ELASTICSEARCH_PASS: password

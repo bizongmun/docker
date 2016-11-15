@@ -1,0 +1,111 @@
+version: '2'
+
+services:
+
+##### Workspace container #####
+    workspace:
+        build:
+            context: ./docker/workspace
+            args:
+                - INSTALL_XDEBUG=false
+                - INSTALL_MONGO=false
+                - INSTALL_NODE=false
+                - INSTALL_DRUSH=false
+                - INSTALL_AEROSPIKE_EXTENSION=false
+                - COMPOSER_GLOBAL_INSTALL=false
+                - INSTALL_WORKSPACE_SSH=false
+                - PUID=1000
+                - PGID=1000
+                - NODE_VERSION=stable
+        volumes_from:
+            - volumes_source
+        extra_hosts:
+            # IMPORTANT: Replace with your Docker Host IP (will be appended to /etc/hosts)
+            - "dockerhost:10.0.75.1"
+        ports:
+           - "22:22"
+        tty: true
+
+##### Php-fpm container #####
+    php-fpm:
+        build:
+            context: ./docker/php-fpm
+            args:
+                - INSTALL_XDEBUG=false
+                - INSTALL_MONGO=true
+                - INSTALL_ZIP_ARCHIVE=true
+                - INSTALL_MEMCACHED=true
+                - INSTALL_OPCACHE=false
+                - INSTALL_AEROSPIKE_EXTENSION=false
+            dockerfile: Dockerfile-70
+        volumes_from:
+            - volumes_source
+        expose:
+            - "9000"
+        links:
+            - workspace
+        extra_hosts:
+            # IMPORTANT: Replace with your Docker Host IP (will be appended to /etc/hosts)
+            - "dockerhost:10.0.75.1"
+        environment:
+            # IMPORTANT: Set the Remote Interpreter entry matching name to `laravel`
+            - PHP_IDE_CONFIG="serverName=laravel"
+
+##### Nginx server container #####
+    nginx:
+        build:
+            context: ./docker/nginx
+            args:
+                - PHP_UPSTREAM=php-fpm
+        volumes_from:
+            - volumes_source
+        volumes:
+            - ./logs/nginx/:/var/log/nginx
+        ports:
+            - "8080:80"
+            - "443:443"
+        links:
+            - php-fpm
+
+##### Mysql container #####
+    mysql:
+        build: ./docker/mysql
+        volumes_from:
+            - volumes_data
+        ports:
+            - "3306:3306"
+        environment:
+            MYSQL_DATABASE: homestead
+            MYSQL_USER: homestead
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: root
+
+##### Redis container #####
+    redis:
+        build: ./docker/redis
+        volumes_from:
+            - volumes_data
+        ports:
+            - "6379:6379"
+
+##### Laravel Application Code Container #####
+    volumes_source:
+        image: tianon/true
+        volumes:
+            - ../:/var/www/laravel
+            # Demonstration of how to mount multiple sites
+            # - ../../site_a/:/var/www/site_a
+            # - ../../site_b/:/var/www/site_b
+
+##### Databases Data Container #####
+    volumes_data:
+        image: tianon/true
+        volumes:
+            - ./data/mysql:/var/lib/mysql
+            #- ./data/postgres:/var/lib/postgresql/data
+            - ./data/memcached:/var/lib/memcached
+            - ./data/redis:/data
+            #- ./data/neo4j:/var/lib/neo4j/data
+            - ./data/mongo:/data/db
+            #- ./data/aerospike:/opt/aerospike/data
+            - ./data/sessions:/sessions
