@@ -10,6 +10,11 @@ Use [docker-compose](https://github.com/docker/compose) to start the containers.
 $ docker-compose up
 ```
 
+You can now access to sonar-server by opening your browser to
+```bash
+http://127.0.0.1:9000/
+```
+
 Restart the containers (after plugin upgrade or install for example).
 
 ```bash
